@@ -7,7 +7,7 @@ GREC (Game Recommendation Engine based on embeddings and Collaborative filtering
 ### 核心功能
 
 - **智能推荐**：基于游戏嵌入向量和协同过滤算法，提供高精度的游戏推荐
-- **双模式数据加载**：支持内存模式和PostgreSQL数据库模式
+- **高效内存加载**：优化的内存加载机制，快速启动和响应
 - **异步数据更新**：先返回基本推荐结果，再异步加载Steam API数据
 - **瀑布流布局**：前端采用响应式瀑布流布局，支持无限滚动
 - **多游戏权重推荐**：支持为多个游戏设置不同权重进行混合推荐
@@ -118,10 +118,11 @@ steam_dataset_2025/
 
 ## 功能实现
 
-### 1. 双模式数据加载
+### 1. 高效内存加载
 
-- **内存模式**：将所有数据加载到内存中，适合开发和测试环境
-- **数据库模式**：从PostgreSQL数据库读取数据，适合生产环境，节省内存
+- **优化的内存管理**：将所有数据加载到内存中，提供最快的访问速度
+- **适合开发和生产环境**：优化的加载机制确保快速启动和响应
+- **低资源占用**：高效的数据结构设计，减少内存消耗
 
 ### 2. 异步数据获取
 
@@ -272,11 +273,7 @@ def calculate_weighted_score(self, similarity, review_count):
 - **解决**：实现异步数据加载，先返回基本结果，再异步更新API数据
 - **代码**：前端实现异步请求`/api/game-details`端点
 
-### 4. 数据存储优化
 
-- **问题**：嵌入向量和数据集文件过大，占用大量磁盘空间
-- **解决**：支持PostgreSQL数据库存储，减少文件依赖
-- **代码**：实现了`application_embeddings`表存储嵌入向量
 
 ## 依赖要求
 
@@ -331,31 +328,7 @@ python app.py
 
 输入游戏名或者游戏描述，系统会返回相关游戏列表。添加游戏之后，系统会根据用户输入的游戏列表和权重，计算出用户的游戏偏好向量。
 
-### 4. 切换加载模式
 
-编辑`app.py`中的`LOAD_MODE`变量：
-
-```python
-# 内存模式
-LOAD_MODE = 'memory'
-
-# 数据库模式
-LOAD_MODE = 'database'
-```
-
-### 5. 配置数据库连接
-
-编辑`app.py`中的`DB_CONFIG`变量：
-
-```python
-DB_CONFIG = {
-    'host': 'localhost',
-    'port': 5432,
-    'database': 'steam_data',
-    'user': 'postgres',
-    'password': 'postgres'
-}
-```
 
 ## API接口
 

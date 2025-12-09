@@ -150,23 +150,8 @@ CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS
 # 初始化推荐系统 - 使用相对路径，支持Windows和Linux
 data_dir = os.path.join(os.path.dirname(__file__), 'steam_dataset_2025')
 
-# 配置加载模式：'memory' 或 'database'
-# 可以通过环境变量或配置文件修改
-LOAD_MODE = 'memory'  # 默认使用内存模式
-
-# 数据库配置
-DB_CONFIG = {
-    'host': 'localhost',
-    'port': 5432,
-    'database': 'steamfull',
-    'user': 'postgres',
-    'password': '123456'
-}
-
 # 初始化推荐系统
 rec_system = GameRecommendationSystem(data_dir)
-rec_system.data_loader.load_mode = LOAD_MODE
-rec_system.data_loader.db_config = DB_CONFIG
 rec_system.initialize()
 
 @app.route('/api/recommend', methods=['POST'])
