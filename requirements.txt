@@ -1,4 +1,5 @@
-pandas
-requests
-kagglehub
-sklearn
+pandas 
+requests 
+flask 
+flask_cors
+psycopg2-binary
