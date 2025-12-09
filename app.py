@@ -147,8 +147,8 @@ def get_steam_price(appid):
 app = Flask(__name__, static_folder='front', static_url_path='/')
 CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type"]}})  # 允许所有跨域请求
 
-# 初始化推荐系统
-data_dir = r'c:\Users\28676\Documents\Program\GREC\steam_dataset_2025'
+# 初始化推荐系统 - 使用相对路径，支持Windows和Linux
+data_dir = os.path.join(os.path.dirname(__file__), 'steam_dataset_2025')
 
 # 配置加载模式：'memory' 或 'database'
 # 可以通过环境变量或配置文件修改
