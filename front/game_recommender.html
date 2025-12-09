@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <title>游戏推荐系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #1b2838;
+            color: #c7d5e0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* 左侧区域 - 游戏选择 */
+        .left-panel {
+            width: 400px;
+            background-color: #171a21;
+            padding: 20px;
+            border-right: 1px solid #316282;
+            overflow-y: auto;
+        }
+        
+        .right-panel {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+        
+        h2 {
+            margin-bottom: 15px;
+            color: #ffffff;
+            font-size: 18px;
+        }
+        
+        /* 搜索区域 */
+        .search-section {
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            background-color: #316282;
+            border: 1px solid #66c0f4;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        
+        .search-input::placeholder {
+            color: #a0c8f0;
+        }
+        
+        .search-results {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #1a232d;
+            border: 1px solid #316282;
+            border-radius: 4px;
+        }
+        
+        .search-result-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #316282;
+        }
+        
+        .search-result-item:hover {
+            background-color: #2a475e;
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* 已选游戏区域 */
+        .selected-games {
+            margin-bottom: 20px;
+        }
+        
+        .selected-game-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #1a232d;
+            border: 1px solid #316282;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .game-info {
+            flex: 1;
+        }
+        
+        .game-name {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .weight-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .weight-slider {
+            width: 100px;
+        }
+        
+        .weight-value {
+            width: 40px;
+            text-align: center;
+            color: #66c0f4;
+            font-weight: bold;
+        }
+        
+        .remove-btn {
+            background-color: #660000;
+            color: #ffffff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .remove-btn:hover {
+            background-color: #990000;
+        }
+        
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background-color: #66c0f4;
+            color: #000000;
+        }
+        
+        .btn-primary:hover {
+            background-color: #88d1f2;
+        }
+        
+        .btn-secondary {
+            background-color: #316282;
+            color: #ffffff;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #4b7998;
+        }
+        
+        /* 右侧表格区域 */
+        .results-section {
+            margin-top: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #66c0f4;
+        }
+        
+        .game-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: fixed;
+        }
+        
+        .game-table th {
+            background-color: #171a21;
+            color: #66c0f4;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 2px solid #316282;
+            white-space: nowrap;
+        }
+        
+        .game-table td {
+            padding: 15px;
+            border-bottom: 1px solid #316282;
+            vertical-align: top;
+        }
+        
+        /* 设置列宽 */
+        .game-table th:nth-child(1),
+        .game-table td:nth-child(1) {
+            width: 100px;
+            text-align: center;
+        }
+        
+        .game-table th:nth-child(2),
+        .game-table td:nth-child(2) {
+            width: 150px;
+        }
+        
+        .game-table th:nth-child(3),
+        .game-table td:nth-child(3) {
+            width: 100px;
+        }
+        
+        .game-table th:nth-child(4),
+        .game-table td:nth-child(4) {
+            width: 120px;
+        }
+        
+        .game-table th:nth-child(5),
+        .game-table td:nth-child(5) {
+            width: 150px;
+        }
+        
+        .game-table th:nth-child(6),
+        .game-table td:nth-child(6) {
+            width: auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* 调整封面图片大小 */
+        .game-cover {
+            width: 80px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* 调整游戏名称链接样式 */
+        .game-title a {
+            color: #66c0f4 !important;
+            text-decoration: none;
+        }
+        
+        .game-title a:hover {
+            text-decoration: underline;
+        }
+        
+        .game-table tr:hover {
+            background-color: #1a232d;
+        }
+        
+        .game-cover {
+            width: 80px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        
+        .game-title {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .similarity {
+            color: #66c0f4;
+            font-weight: bold;
+        }
+        
+        .free-game {
+            color: #4caf50;
+        }
+        
+        .paid-game {
+            color: #ff9800;
+        }
+        
+        /* 评分 */
+        .metacritic-score {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .score-high {
+            background-color: #4caf50;
+            color: #ffffff;
+        }
+        
+        .score-medium {
+            background-color: #ff9800;
+            color: #ffffff;
+        }
+        
+        .score-low {
+            background-color: #f44336;
+            color: #ffffff;
+        }
+        
+        /* 推荐结果容器样式 */
+        .recommendations-container {
+            margin-top: 20px;
+        }
+        
+        /* 瀑布流网格样式 */
+        .masonry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        /* 游戏卡片样式 */
+        .game-card {
+            background-color: #1a232d;
+            border: 1px solid #316282;
+            border-radius: 0;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            border-color: #66c0f4;
+        }
+        
+        /* 加载更多样式 */
+        .loading-more, .loading-complete {
+            text-align: center;
+            padding: 20px;
+            color: #66c0f4;
+            font-size: 14px;
+        }
+        
+        .loading-complete {
+            color: #999;
+        }
+        
+        /* 游戏封面样式 */
+        .game-card-cover {
+            width: 100%;
+            height: 168px;
+            object-fit: cover;
+            display: block;
+            border-bottom: 1px solid #316282;
+        }
+        
+        /* 游戏信息样式 */
+        .game-card-info {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 游戏名称样式 */
+        .game-card-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 6px;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        /* 游戏链接样式 */
+        .game-card-title a {
+            color: #66c0f4 !important;
+            text-decoration: none;
+        }
+        
+        .game-card-title a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 游戏元信息样式 */
+        .game-card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* 游戏分类样式 */
+        .game-card-genres {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .game-card-genre {
+            background-color: #171a21;
+            color: #c7d5e0;
+            padding: 2px 6px;
+            border-radius: 0;
+            font-size: 11px;
+            border: 1px solid #316282;
+        }
+        
+        /* 相似度进度条样式 */
+        .similarity-container {
+            margin-bottom: 10px;
+        }
+        
+        .similarity-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #999;
+        }
+        
+        .similarity-bar {
+            width: 100%;
+            height: 6px;
+            background-color: #2a475e;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .similarity-progress {
+            height: 100%;
+            background-color: #66c0f4;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        /* 游戏价格和评分样式 */
+        .game-card-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 8px;
+            border-top: 1px solid #2a475e;
+        }
+        
+        /* 价格样式 */
+        .game-card-price {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .free-game {
+            color: #4caf50;
+        }
+        
+        .paid-game {
+            color: #ff9800;
+        }
+        
+        /* 用户评分样式 */
+        .user-score-label {
+            padding: 2px 6px;
+            border-radius: 0;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        /* 用户评分数量样式 */
+        .user-score-count {
+            font-size: 11px;
+            color: #888;
+            margin-left: 4px;
+        }
+        
+        /* 用户评分容器样式 */
+        .user-score-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .score-overwhelmingly-positive {
+            background-color: #4caf50;
+            color: #ffffff;
+        }
+        
+        .score-very-positive {
+            background-color: #689f38;
+            color: #ffffff;
+        }
+        
+        .score-mostly-positive {
+            background-color: #8bc34a;
+            color: #ffffff;
+        }
+        
+        .score-mixed {
+            background-color: #ff9800;
+            color: #ffffff;
+        }
+        
+        .score-mostly-negative {
+            background-color: #ff5722;
+            color: #ffffff;
+        }
+        
+        .score-overwhelmingly-negative {
+            background-color: #f44336;
+            color: #ffffff;
+        }
+        
+        .score-no-reviews {
+            background-color: #607d8b;
+            color: #ffffff;
+        }
+        
+        /* 游戏描述样式 */
+        .game-card-description {
+            font-size: 12px;
+            color: #bbb;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .left-panel {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #316282;
+            }
+            
+            .recommendations-container {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .game-card {
+                width: 100%;
+                max-width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧区域 - 游戏选择 -->
+        <div class="left-panel">
+            <h1>游戏推荐系统</h1>
+            
+            <!-- 搜索区域 -->
+            <div class="search-section">
+                <h2>搜索游戏</h2>
+                <input type="text" class="search-input" placeholder="输入游戏名称..." id="game-search">
+                <div class="search-results" id="search-results"></div>
+            </div>
+            
+            <!-- 已选游戏区域 -->
+            <div class="selected-games">
+                <h2>已选游戏</h2>
+                <div id="selected-games-container">
+                    <p id="no-selection" style="color: #888;">暂无选择的游戏</p>
+                </div>
+            </div>
+            
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button class="btn btn-primary" id="get-recommendations">获取推荐</button>
+                <button class="btn btn-secondary" id="clear-selection">清除选择</button>
+            </div>
+            
+            <!-- 说明 -->
+            <div class="instructions">
+                <h2>使用说明</h2>
+                <ul style="list-style-type: disc; padding-left: 20px; font-size: 14px; color: #888;">
+                    <li>在搜索框中输入游戏名称</li>
+                    <li>点击搜索结果添加游戏</li>
+                    <li>拖动滑块调整游戏权重</li>
+                    <li>点击"获取推荐"查看结果</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- 右侧区域 - 推荐结果 -->
+        <div class="right-panel">
+            <h2>推荐结果</h2>
+            <div class="results-section">
+                <div id="loading" class="loading" style="display: none;">加载中...</div>
+                <div id="error" style="display: none; color: #f44336; margin-bottom: 20px;"></div>
+                <div class="recommendations-container" id="recommendations-container" style="display: none;">
+                    <!-- 瀑布流布局容器 -->
+                    <div class="masonry-grid" id="masonry-grid"></div>
+                    <!-- 加载更多指示器 -->
+                    <div class="loading-more" id="loading-more" style="display: none;">加载更多...</div>
+                    <!-- 加载完成指示器 -->
+                    <div class="loading-complete" id="loading-complete" style="display: none;">已加载全部推荐</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let selectedGames = [];
+            
+            // 搜索游戏
+            $('#game-search').on('input', function() {
+                const query = $(this).val().toLowerCase();
+                
+                if (query === '') {
+                    $('#search-results').empty();
+                    return;
+                }
+                
+                // 调用后端API搜索游戏
+                $.ajax({
+                    url: '/api/games',
+                    type: 'GET',
+                    data: { q: query, limit: 10 },
+                    success: function(response) {
+                        const results = response.games;
+                        const resultsHtml = results.map(game => `
+                            <div class="search-result-item" data-appid="${game.appid}" data-name="${game.name}" data-cover="${game.cover}">
+                                <div class="game-name">${game.name}</div>
+                            </div>
+                        `).join('');
+                        
+                        $('#search-results').html(resultsHtml);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('搜索游戏失败:', error);
+                        $('#search-results').html('<div class="search-result-item" style="color: #f44336;">搜索失败，请重试</div>');
+                    }
+                });
+            });
+            
+            // 点击搜索结果添加游戏
+            $(document).on('click', '.search-result-item', function() {
+                const appid = $(this).data('appid');
+                const name = $(this).data('name');
+                const cover = $(this).data('cover');
+                
+                // 检查是否已添加
+                if (!selectedGames.find(game => game.appid === appid)) {
+                    selectedGames.push({ appid, name, cover, weight: 50 });
+                    updateSelectedGames();
+                    $('#game-search').val('');
+                    $('#search-results').empty();
+                }
+            });
+            
+            // 更新已选游戏显示
+            function updateSelectedGames() {
+                if (selectedGames.length === 0) {
+                    $('#no-selection').show();
+                    $('#selected-games-container').html('<p id="no-selection" style="color: #888;">暂无选择的游戏</p>');
+                    return;
+                }
+                
+                $('#no-selection').hide();
+                const gamesHtml = selectedGames.map((game, index) => `
+                    <div class="selected-game-item">
+                        <div class="game-info">
+                            <div class="game-name">${game.name}</div>
+                            <small>AppID: ${game.appid}</small>
+                        </div>
+                        <div class="weight-control">
+                            <input type="range" class="weight-slider" min="0" max="100" value="${game.weight}" data-index="${index}">
+                            <span class="weight-value" data-index="${index}">${game.weight}%</span>
+                            <button class="remove-btn" data-index="${index}">移除</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                $('#selected-games-container').html(gamesHtml);
+            }
+            
+            // 调整权重
+            $(document).on('input', '.weight-slider', function() {
+                const index = $(this).data('index');
+                const weight = parseInt($(this).val());
+                selectedGames[index].weight = weight;
+                $(`.weight-value[data-index="${index}"]`).text(`${weight}%`);
+            });
+            
+            // 移除游戏
+            $(document).on('click', '.remove-btn', function() {
+                const index = $(this).data('index');
+                selectedGames.splice(index, 1);
+                updateSelectedGames();
+            });
+            
+            // 清除选择
+            $('#clear-selection').on('click', function() {
+                selectedGames = [];
+                updateSelectedGames();
+            });
+            
+            // 无限滚动相关状态
+            let currentPage = 1;
+            let isLoading = false;
+            let hasMore = true;
+            let currentRequestData = null;
+            
+            // 获取推荐
+            $('#get-recommendations').on('click', function() {
+                if (selectedGames.length === 0) {
+                    alert('请至少选择一个游戏');
+                    return;
+                }
+                
+                // 重置状态
+                currentPage = 1;
+                isLoading = false;
+                hasMore = true;
+                
+                // 清空之前的推荐结果
+                $('#masonry-grid').empty();
+                $('#loading-more').hide();
+                $('#loading-complete').hide();
+                
+                // 显示加载状态
+                $('#loading').show();
+                $('#error').hide();
+                $('#recommendations-container').hide();
+                
+                // 构建请求数据
+                currentRequestData = {
+                    games: selectedGames.map(game => ({
+                        appid: parseInt(game.appid),
+                        weight: game.weight / 100 // 转换为0-1范围
+                    })),
+                    page: 1,
+                    per_page: 12
+                };
+                
+                // 调用后端API获取推荐
+                loadRecommendations(currentRequestData);
+            });
+            
+            // 加载推荐的函数
+            function loadRecommendations(requestData) {
+                if (isLoading || !hasMore) return;
+                
+                isLoading = true;
+                if (requestData.page > 1) {
+                    $('#loading-more').show();
+                }
+                
+                // 调用后端API获取推荐
+                $.ajax({
+                    url: '/api/recommend',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestData),
+                    success: function(response) {
+                        // 隐藏加载状态
+                        $('#loading').hide();
+                        $('#loading-more').hide();
+                        
+                        // 检查是否有更多数据
+                        hasMore = response.page < response.total_pages;
+                        
+                        // 如果没有更多数据，显示加载完成
+                        if (!hasMore) {
+                            $('#loading-complete').show();
+                        }
+                        
+                        // 显示推荐结果
+                        renderRecommendations(response.recommendations);
+                        
+                        // 更新当前页码
+                        currentPage = response.page + 1;
+                        isLoading = false;
+                    },
+                    error: function(xhr, status, error) {
+                        // 隐藏加载状态
+                        $('#loading').hide();
+                        $('#loading-more').hide();
+                        
+                        // 显示详细错误信息
+                        let errorMessage = '获取推荐失败，请重试';
+                        try {
+                            errorMessage = xhr.responseJSON?.error || `HTTP ${xhr.status}: ${xhr.statusText}`;
+                        } catch (e) {
+                            errorMessage = `请求失败: ${status} - ${error}`;
+                        }
+                        $('#error').text(errorMessage).show();
+                        console.error('获取推荐失败:', {
+                            status: status,
+                            error: error,
+                            xhrStatus: xhr.status,
+                            xhrStatusText: xhr.statusText,
+                            responseText: xhr.responseText,
+                            responseJSON: xhr.responseJSON
+                        });
+                        
+                        isLoading = false;
+                    }
+                });
+            }
+            
+            // 滚动事件监听，实现无限滚动
+            $(window).on('scroll', function() {
+                if (isLoading || !hasMore || !currentRequestData) return;
+                
+                const windowHeight = $(window).height();
+                const documentHeight = $(document).height();
+                const scrollTop = $(window).scrollTop();
+                
+                // 当滚动到距离底部200px时加载更多
+                if (scrollTop + windowHeight >= documentHeight - 200) {
+                    currentRequestData.page = currentPage;
+                    loadRecommendations(currentRequestData);
+                }
+            });
+            
+            // 获取用户评分对应的CSS类
+            function getUserScoreClass(label) {
+                switch (label) {
+                    case '好评如潮':
+                        return 'score-overwhelmingly-positive';
+                    case '特别好评':
+                        return 'score-very-positive';
+                    case '多半好评':
+                        return 'score-mostly-positive';
+                    case '褒贬不一':
+                        return 'score-mixed';
+                    case '多半差评':
+                        return 'score-mostly-negative';
+                    case '特别差评':
+                        return 'score-very-negative';
+                    case '差评如潮':
+                        return 'score-overwhelmingly-negative';
+                    default:
+                        return 'score-no-reviews';
+                }
+            }
+            
+            // 渲染单个推荐卡片
+            function renderGameCard(rec) {
+                // 构建Steam商店链接
+                const steamUrl = `https://store.steampowered.com/app/${rec.appid}/`;
+                
+                // 格式化相似度为百分比
+                const similarityPercent = (rec.similarity * 100).toFixed(2);
+                
+                // 格式化价格
+                const priceClass = rec.is_free ? 'free-game' : 'paid-game';
+                
+                // 获取用户评分CSS类
+                const userScoreClass = getUserScoreClass(rec.user_score_label);
+                
+                // 格式化发行日期
+                const releaseDate = rec.release_date ? rec.release_date : '未知';
+                
+                // 渲染分类标签
+                const genresHtml = rec.genres && rec.genres.length > 0 
+                    ? rec.genres.slice(0, 3).map(genre => `<span class="game-card-genre">${genre}</span>`).join('')
+                    : '<span class="game-card-genre">未知</span>';
+                
+                // 渲染卡片
+                const cardHtml = `
+                    <div class="game-card" data-appid="${rec.appid}">
+                        <img src="${rec.cover}" alt="${rec.name}" class="game-card-cover">
+                        <div class="game-card-info">
+                            <div class="game-card-title">
+                                <a href="${steamUrl}" target="_blank">${rec.name}</a>
+                            </div>
+                            <div class="game-card-meta">
+                                <span class="release-date">${releaseDate}</span>
+                                <span class="appid">AppID: ${rec.appid}</span>
+                            </div>
+                            <div class="game-card-genres">
+                                ${genresHtml}
+                            </div>
+                            <div class="similarity-container">
+                                <div class="similarity-label">
+                                    <span>相似度</span>
+                                    <span>${similarityPercent}%</span>
+                                </div>
+                                <div class="similarity-bar">
+                                    <div class="similarity-progress" style="width: ${similarityPercent}%"></div>
+                                </div>
+                            </div>
+                            <div class="game-card-description">
+                                ${rec.short_description || '暂无描述'}
+                            </div>
+                            <div class="game-card-stats">
+                                <span class="game-card-price ${priceClass}">${rec.price}</span>
+                                <span class="user-score-container">
+                                    <span class="user-score-label ${userScoreClass}">${rec.user_score_label}</span>
+                                    <span class="user-score-count">(${rec.total_reviews})</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                return cardHtml;
+            }
+            
+            // 渲染推荐结果到瀑布流网格
+            function renderRecommendations(recommendations) {
+                const cardsHtml = recommendations.map(rec => renderGameCard(rec)).join('');
+                
+                // 添加到瀑布流网格
+                $('#masonry-grid').append(cardsHtml);
+                
+                // 显示推荐容器
+                $('#recommendations-container').show();
+                
+                // 异步获取详细信息
+                fetchGameDetails(recommendations);
+            }
+            
+            // 异步获取游戏详细信息
+            function fetchGameDetails(recommendations) {
+                // 为每个推荐游戏创建独立的异步请求
+                recommendations.forEach(rec => {
+                    fetchSingleGameDetails(rec.appid);
+                });
+            }
+            
+            // 获取单个游戏的详细信息（调用后端API）
+            function fetchSingleGameDetails(appid) {
+                // 调用后端API获取单个游戏的详细信息
+                    $.ajax({
+                        url: '/api/game-details',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ appids: [appid] }),
+                    success: function(response) {
+                        // 更新游戏卡片
+                        const details = response.details;
+                        if (details[appid]) {
+                            updateGameCard(appid, details[appid]);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(`获取游戏 ${appid} 详情失败:`, error);
+                        // 可以在这里添加错误处理逻辑，例如显示错误信息
+                        // 更新为默认值
+                        updateGameCard(appid, {
+                            price: '获取价格失败',
+                            is_free: false,
+                            user_score_label: '获取评价失败',
+                            user_score_percentage: 0.0,
+                            total_reviews: 0
+                        });
+                    }
+                });
+            }
+            
+            // 更新游戏卡片信息
+            function updateGameCard(appid, detail) {
+                const card = $(`.game-card[data-appid="${appid}"]`);
+                if (card.length === 0) return;
+                
+                // 更新价格
+                const priceClass = detail.is_free ? 'free-game' : 'paid-game';
+                card.find('.game-card-price')
+                    .removeClass('free-game paid-game')
+                    .addClass(priceClass)
+                    .text(detail.price);
+                
+                // 更新评分
+                const userScoreClass = getUserScoreClass(detail.user_score_label);
+                card.find('.user-score-label')
+                    .removeClass()
+                    .addClass('user-score-label')
+                    .addClass(userScoreClass)
+                    .text(detail.user_score_label);
+                
+                // 更新评分数量
+                card.find('.user-score-count').text(`(${detail.total_reviews})`);
+            }
+        });
+    </script>
+</body>
+</html>
