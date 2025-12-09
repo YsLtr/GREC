@@ -637,7 +637,8 @@
         $(document).ready(function() {
             let selectedGames = [];
             
-            // 搜索游戏
+            // 搜索游戏（添加500ms消抖延迟）
+            let searchTimeout;
             $('#game-search').on('input', function() {
                 const query = $(this).val().toLowerCase();
                 
@@ -646,26 +647,32 @@
                     return;
                 }
                 
-                // 调用后端API搜索游戏
-                $.ajax({
-                    url: '/api/games',
-                    type: 'GET',
-                    data: { q: query, limit: 10 },
-                    success: function(response) {
-                        const results = response.games;
-                        const resultsHtml = results.map(game => `
-                            <div class="search-result-item" data-appid="${game.appid}" data-name="${game.name}" data-cover="${game.cover}">
-                                <div class="game-name">${game.name}</div>
-                            </div>
-                        `).join('');
-                        
-                        $('#search-results').html(resultsHtml);
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('搜索游戏失败:', error);
-                        $('#search-results').html('<div class="search-result-item" style="color: #f44336;">搜索失败，请重试</div>');
-                    }
-                });
+                // 清除之前的定时器
+                clearTimeout(searchTimeout);
+                
+                // 设置500ms延迟后发送搜索请求
+                searchTimeout = setTimeout(function() {
+                    // 调用后端API搜索游戏
+                    $.ajax({
+                        url: '/api/games',
+                        type: 'GET',
+                        data: { q: query, limit: 10 },
+                        success: function(response) {
+                            const results = response.games;
+                            const resultsHtml = results.map(game => `
+                                <div class="search-result-item" data-appid="${game.appid}" data-name="${game.name}" data-cover="${game.cover}">
+                                    <div class="game-name">${game.name}</div>
+                                </div>
+                            `).join('');
+                            
+                            $('#search-results').html(resultsHtml);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('搜索游戏失败:', error);
+                            $('#search-results').html('<div class="search-result-item" style="color: #f44336;">搜索失败，请重试</div>');
+                        }
+                    });
+                }, 500);
             });
             
             // 点击搜索结果添加游戏
