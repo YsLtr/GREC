@@ -9,20 +9,13 @@ class GameRecommendationSystem:
         self.data_dir = data_dir
         self.data_loader = DataLoader(data_dir)
         self.vector_index = VectorIndex(dimension=1024)  # 内容推荐索引
-        self.user_vector_index = VectorIndex(dimension=1024)  # 用户嵌入索引
         self.collaborative_index = VectorIndex(dimension=1024)  # 协同推荐索引
         self.appid_to_vector_index = None
         self.vector_index_to_appid = None
         # 评论嵌入相关
         self.review_embeddings = None
         self.appid_to_review_vectors = None
-        # 用户嵌入相关
-        self.steamid_to_review_vectors = None
-        self.steamid_to_appids = None
-        self.userid_to_vector_index = None
-        self.vector_index_to_userid = None
         # 游戏平均评论向量相关
-        self.game_avg_review_vectors = None
         self.gameid_to_vector_index = None
         self.vector_index_to_gameid = None
     
@@ -93,53 +86,6 @@ class GameRecommendationSystem:
             # 保存评论嵌入相关数据
             self.review_embeddings = self.data_loader.review_embeddings
             self.appid_to_review_vectors = self.data_loader.appid_to_review_vectors
-            
-            # 保存用户嵌入相关数据
-            self.steamid_to_review_vectors = self.data_loader.steamid_to_review_vectors
-            self.steamid_to_appids = self.data_loader.steamid_to_appids
-            
-            # 构建用户嵌入索引
-            if self.steamid_to_review_vectors and len(self.steamid_to_review_vectors) > 0:
-                print(f"Building user embedding index for {len(self.steamid_to_review_vectors)} users...")
-                # 准备用户嵌入数据
-                user_embeddings = []
-                user_ids = []
-                for steamid, embedding in self.steamid_to_review_vectors.items():
-                    user_embeddings.append(embedding)
-                    user_ids.append(steamid)
-                
-                # 转换为numpy数组
-                user_embeddings = np.array(user_embeddings)
-                
-                # 构建用户嵌入映射
-                self.userid_to_vector_index = {steamid: idx for idx, steamid in enumerate(user_ids)}
-                self.vector_index_to_userid = {idx: steamid for idx, steamid in enumerate(user_ids)}
-                
-                # 构建用户嵌入索引
-                user_index_path = os.path.join(index_dir, 'user_hnsw.index')
-                
-                # 检查user_vector_index是否已经使用faiss
-                print(f"Before user index operation, faiss available: {self.user_vector_index.use_faiss}")
-                
-                # 根据faiss可用性选择索引类型
-                user_index_type = 'hnsw' if self.vector_index.use_faiss else 'flat'
-                print(f"Using index type: {user_index_type} for user index")
-                
-                try:
-                    print(f"Attempting to load user index from {user_index_path}...")
-                    self.user_vector_index.load_index(user_index_path, user_embeddings)
-                    
-                    print(f"Successfully loaded user index from {user_index_path}, index_type: {self.user_vector_index.index_type}")
-                except Exception as e:
-                    print(f"Failed to load user index: {e}, building new index...")
-                    
-                    # 直接构建索引，不重新初始化user_vector_index
-                    self.user_vector_index.build_index(user_embeddings, index_type=user_index_type)
-                    print(f"Built user index, index_type: {self.user_vector_index.index_type}, faiss used: {self.user_vector_index.use_faiss}")
-                    
-                    print(f"Saving user index to {user_index_path}...")
-                    self.user_vector_index.save_index(user_index_path)
-                    print(f"Successfully saved user index to {user_index_path}")
         
         # 构建协同推荐索引
         if use_collaborative and self.appid_to_review_vectors and len(self.appid_to_review_vectors) > 0:

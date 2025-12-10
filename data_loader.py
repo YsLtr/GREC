@@ -20,10 +20,6 @@ class DataLoader:
         self.recommendationid_to_appid = None  # 评论ID到appid的映射
         self.appid_to_review_indices = None    # appid到评论向量索引列表的映射
         self.appid_to_review_vectors = None    # appid到评论嵌入向量列表的映射
-        # 用户相关映射
-        self.steamid_to_recommendationids = None  # 用户ID到评论ID列表的映射
-        self.steamid_to_review_vectors = None     # 用户ID到评论嵌入向量列表的映射
-        self.steamid_to_appids = None             # 用户ID到游戏ID列表的映射
     
     def load_applications_data(self):
         """加载游戏基本数据"""
@@ -122,20 +118,17 @@ class DataLoader:
         
         # 保存内容推荐所需的映射
         if save_content_mappings:
-            embedding_mappings['app_id_to_index'] = self.app_id_to_index
-            embedding_mappings['index_to_app_id'] = self.index_to_app_id
-            embedding_mappings['app_id_to_embedding'] = self.app_id_to_embedding
+            embedding_mappings['app_id_to_index'] = self.app_id_to_index or {}
+            embedding_mappings['index_to_app_id'] = self.index_to_app_id or {}
+            embedding_mappings['app_id_to_embedding'] = self.app_id_to_embedding or {}
         
         # 保存协同推荐所需的映射
         if save_collaborative_mappings:
             # 只有在需要保存协同推荐映射时才包含这些字段
-            embedding_mappings['review_id_to_index'] = self.review_id_to_index if hasattr(self, 'review_id_to_index') else {}
-            embedding_mappings['recommendationid_to_appid'] = self.recommendationid_to_appid if hasattr(self, 'recommendationid_to_appid') else {}
-            embedding_mappings['appid_to_review_indices'] = self.appid_to_review_indices if hasattr(self, 'appid_to_review_indices') else {}
-            embedding_mappings['appid_to_review_vectors'] = self.appid_to_review_vectors if hasattr(self, 'appid_to_review_vectors') else {}
-            embedding_mappings['steamid_to_recommendationids'] = self.steamid_to_recommendationids if hasattr(self, 'steamid_to_recommendationids') else {}
-            embedding_mappings['steamid_to_appids'] = self.steamid_to_appids if hasattr(self, 'steamid_to_appids') else {}
-            embedding_mappings['steamid_to_review_vectors'] = self.steamid_to_review_vectors if hasattr(self, 'steamid_to_review_vectors') else {}
+            embedding_mappings['review_id_to_index'] = self.review_id_to_index or {}
+            embedding_mappings['recommendationid_to_appid'] = self.recommendationid_to_appid or {}
+            embedding_mappings['appid_to_review_indices'] = self.appid_to_review_indices or {}
+            embedding_mappings['appid_to_review_vectors'] = self.appid_to_review_vectors or {}
         
         embedding_mappings_path = os.path.join(mappings_dir, 'embedding_mappings.pkl')
         with open(embedding_mappings_path, 'wb') as f:
@@ -154,28 +147,22 @@ class DataLoader:
             
             # 加载内容推荐所需的映射
             if load_content_mappings:
-                self.app_id_to_index = embedding_mappings['app_id_to_index']
-                self.index_to_app_id = embedding_mappings['index_to_app_id']
-                self.app_id_to_embedding = embedding_mappings['app_id_to_embedding']
+                self.app_id_to_index = embedding_mappings.get('app_id_to_index', {})
+                self.index_to_app_id = embedding_mappings.get('index_to_app_id', {})
+                self.app_id_to_embedding = embedding_mappings.get('app_id_to_embedding', {})
                 print(f"Loaded {len(self.app_id_to_embedding)} application embedding mappings from file")
             
             # 加载协同推荐所需的映射
             if load_collaborative_mappings:
-                self.review_id_to_index = embedding_mappings['review_id_to_index']
-                self.recommendationid_to_appid = embedding_mappings['recommendationid_to_appid']
-                self.appid_to_review_indices = embedding_mappings['appid_to_review_indices']
-                self.appid_to_review_vectors = embedding_mappings['appid_to_review_vectors']
-                self.steamid_to_recommendationids = embedding_mappings['steamid_to_recommendationids']
-                self.steamid_to_appids = embedding_mappings['steamid_to_appids']
-                self.steamid_to_review_vectors = embedding_mappings['steamid_to_review_vectors']
+                self.review_id_to_index = embedding_mappings.get('review_id_to_index', {})
+                self.recommendationid_to_appid = embedding_mappings.get('recommendationid_to_appid', {})
+                self.appid_to_review_indices = embedding_mappings.get('appid_to_review_indices', {})
+                self.appid_to_review_vectors = embedding_mappings.get('appid_to_review_vectors', {})
                 
                 print(f"Loaded {len(self.review_id_to_index)} review embedding mappings from file")
                 print(f"Loaded {len(self.recommendationid_to_appid)} recommendationid to appid mappings from file")
                 print(f"Loaded appid to review indices mappings for {len(self.appid_to_review_indices)} apps from file")
                 print(f"Loaded appid to review vectors mappings for {len(self.appid_to_review_vectors)} apps from file")
-                print(f"Loaded steamid to recommendationids mapping for {len(self.steamid_to_recommendationids)} users from file")
-                print(f"Loaded steamid to appids mapping for {len(self.steamid_to_appids)} users from file")
-                print(f"Loaded steamid to review vectors mapping for {len(self.steamid_to_review_vectors)} users from file")
             
             return True
         
@@ -257,48 +244,6 @@ class DataLoader:
                 review_vectors = [self.review_embeddings[idx] for idx in indices]
                 self.appid_to_review_vectors[appid] = np.array(review_vectors)
             print(f"Built appid to review vectors mappings for {len(self.appid_to_review_vectors)} apps")
-            
-            # 加载完整的reviews.csv数据，用于构建用户映射
-            reviews_path = os.path.join(self.data_dir, 'steam_dataset_2025_csv_package_v1', 'steam_dataset_2025_csv', 'reviews.csv')
-            reviews_df = pd.read_csv(reviews_path, usecols=['recommendationid', 'appid', 'author_steamid', 'voted_up'])
-            
-            # 4. 构建steamid到recommendationids的映射
-            self.steamid_to_recommendationids = {}
-            for _, row in reviews_df.iterrows():
-                steamid = row['author_steamid']
-                recommendationid = row['recommendationid']
-                if steamid not in self.steamid_to_recommendationids:
-                    self.steamid_to_recommendationids[steamid] = []
-                self.steamid_to_recommendationids[steamid].append(recommendationid)
-            
-            print(f"Built steamid to recommendationids mapping for {len(self.steamid_to_recommendationids)} users")
-            
-            # 5. 构建steamid到appids的映射（仅包含正向推荐）
-            self.steamid_to_appids = {}
-            for _, row in reviews_df[reviews_df['voted_up']].iterrows():
-                steamid = row['author_steamid']
-                appid = row['appid']
-                if steamid not in self.steamid_to_appids:
-                    self.steamid_to_appids[steamid] = []
-                if appid not in self.steamid_to_appids[steamid]:
-                    self.steamid_to_appids[steamid].append(appid)
-            
-            print(f"Built steamid to appids mapping for {len(self.steamid_to_appids)} users")
-            
-            # 6. 构建steamid到review_vectors的映射（用户平均嵌入）
-            self.steamid_to_review_vectors = {}
-            for steamid, recommendationids in self.steamid_to_recommendationids.items():
-                # 获取该用户所有评论的向量索引
-                vector_indices = [self.review_id_to_index.get(rec_id) for rec_id in recommendationids if rec_id in self.review_id_to_index]
-                if vector_indices:
-                    # 获取对应的评论向量
-                    review_vectors = [self.review_embeddings[idx] for idx in vector_indices if idx < len(self.review_embeddings)]
-                    if review_vectors:
-                        # 计算用户平均嵌入向量
-                        avg_review_vector = np.mean(review_vectors, axis=0)
-                        self.steamid_to_review_vectors[steamid] = avg_review_vector
-            
-            print(f"Built steamid to review vectors mapping for {len(self.steamid_to_review_vectors)} users")
         
         # 保存嵌入映射到文件
         self.save_embedding_mappings(load_content_mappings, load_collaborative_mappings)
@@ -397,11 +342,8 @@ class DataLoader:
         self.recommendationid_to_appid = None  # 评论ID到appid的映射
         self.appid_to_review_indices = None    # appid到评论向量索引列表的映射
         self.appid_to_review_vectors = None    # appid到评论嵌入向量列表的映射
-        # 用户相关映射
+        # 评论ID到向量索引的映射
         self.review_id_to_index = None
-        self.steamid_to_recommendationids = None  # 用户ID到评论ID列表的映射
-        self.steamid_to_review_vectors = None     # 用户ID到评论嵌入向量列表的映射
-        self.steamid_to_appids = None             # 用户ID到游戏ID列表的映射
         
     def initialize(self):
         """初始化所有数据"""
