@@ -11,6 +11,10 @@ USE_COLLABORATIVE = True  # 是否使用协同推荐
 GAME_WEIGHT = 0.3  # 内容推荐权重
 REVIEW_WEIGHT = 0.7  # 协同推荐权重
 
+# 索引类型配置 - 支持 FLAT 或 HNSW
+CONTENT_INDEX_TYPE = 'FLAT'  # 内容推荐索引类型
+COLLABORATIVE_INDEX_TYPE = 'FLAT'  # 协同推荐索引类型
+
 # 重排权重配置
 REVIEW_COUNT_WEIGHT = 0.5  # 评论数量权重
 USER_SCORE_WEIGHT = 0.5  # 用户评分权重

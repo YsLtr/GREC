@@ -2,7 +2,7 @@ from data_loader import DataLoader
 from vector_index import VectorIndex
 import numpy as np
 import os
-from config import GAME_WEIGHT, REVIEW_WEIGHT, REVIEW_COUNT_WEIGHT, USER_SCORE_WEIGHT
+from config import GAME_WEIGHT, REVIEW_WEIGHT, REVIEW_COUNT_WEIGHT, USER_SCORE_WEIGHT, CONTENT_INDEX_TYPE, COLLABORATIVE_INDEX_TYPE
 
 class GameRecommendationSystem:
     def __init__(self, data_dir):
@@ -40,12 +40,12 @@ class GameRecommendationSystem:
             self.data_loader.load_genres_data()
         
         if use_content_based:
-            # 内容推荐索引文件路径
-            content_index_path = os.path.join(index_dir, 'content_hnsw.index')
+            # 使用配置文件中的索引类型
+            index_type = CONTENT_INDEX_TYPE.lower()
+            print(f"Using content index type: {index_type}")
             
-            # 检查faiss是否可用
-            faiss_available = self.vector_index.use_faiss
-            print(f"faiss available: {faiss_available}")
+            # 内容推荐索引文件路径（根据索引类型使用不同文件名）
+            content_index_path = os.path.join(index_dir, f'content_{index_type}.index')
             
             # 尝试加载已保存的内容索引
             index_loaded = False
@@ -55,21 +55,17 @@ class GameRecommendationSystem:
                 self.vector_index.load_index(content_index_path, self.data_loader.app_embeddings)
                 
                 # 检查索引类型是否符合预期
-                if faiss_available and self.vector_index.index_type == 'hnsw':
-                    print(f"Successfully loaded hnsw content index from {content_index_path}")
+                if self.vector_index.index_type == index_type:
+                    print(f"Successfully loaded {index_type} content index from {content_index_path}")
                     index_loaded = True
                 else:
-                    print(f"Loaded {self.vector_index.index_type} index, but hnsw index is preferred")
+                    print(f"Loaded {self.vector_index.index_type} index, but {index_type} index is expected")
             except Exception as e:
                 print(f"Failed to load content index: {e}")
             
             # 如果索引未加载成功，构建新索引
             if not index_loaded:
                 print(f"Building new content index...")
-                # 根据faiss可用性选择索引类型
-                index_type = 'hnsw' if faiss_available else 'flat'
-                print(f"Using index type: {index_type}")
-                
                 # 直接构建向量索引，不重新初始化vector_index
                 self.vector_index.build_index(self.data_loader.app_embeddings, index_type=index_type)
                 
@@ -106,31 +102,37 @@ class GameRecommendationSystem:
             self.gameid_to_vector_index = {appid: idx for idx, appid in enumerate(game_ids)}
             self.vector_index_to_gameid = {idx: appid for idx, appid in enumerate(game_ids)}
             
-            # 构建协同推荐索引
-            collaborative_index_path = os.path.join(index_dir, 'collaborative_hnsw.index')
-            
-            # 检查collaborative_index是否已经使用faiss
-            print(f"Before collaborative index operation, faiss available: {self.collaborative_index.use_faiss}")
-            
-            # 根据faiss可用性选择索引类型
-            collaborative_index_type = 'hnsw' if self.vector_index.use_faiss else 'flat'
+            # 使用配置文件中的索引类型
+            collaborative_index_type = COLLABORATIVE_INDEX_TYPE.lower()
             print(f"Using index type: {collaborative_index_type} for collaborative recommendation index")
             
+            # 构建协同推荐索引文件路径（根据索引类型使用不同文件名）
+            collaborative_index_path = os.path.join(index_dir, f'collaborative_{collaborative_index_type}.index')
+            
+            # 尝试加载已保存的协同推荐索引
+            index_loaded = False
             try:
                 print(f"Attempting to load collaborative index from {collaborative_index_path}...")
                 self.collaborative_index.load_index(collaborative_index_path, game_embeddings)
                 
-                print(f"Successfully loaded collaborative index from {collaborative_index_path}, index_type: {self.collaborative_index.index_type}")
+                # 检查索引类型是否符合预期
+                if self.collaborative_index.index_type == collaborative_index_type:
+                    print(f"Successfully loaded {collaborative_index_type} collaborative index from {collaborative_index_path}")
+                    index_loaded = True
+                else:
+                    print(f"Loaded {self.collaborative_index.index_type} index, but {collaborative_index_type} index is expected")
             except Exception as e:
                 print(f"Failed to load collaborative index: {e}, building new index...")
-                
+            
+            # 如果索引未加载成功，构建新索引
+            if not index_loaded:
                 # 直接构建索引，不重新初始化collaborative_index
                 self.collaborative_index.build_index(game_embeddings, index_type=collaborative_index_type)
-                print(f"Built collaborative index, index_type: {self.collaborative_index.index_type}, faiss used: {self.collaborative_index.use_faiss}")
+                print(f"Built collaborative index, index_type: {self.collaborative_index.index_type}")
                 
                 print(f"Saving collaborative index to {collaborative_index_path}...")
                 self.collaborative_index.save_index(collaborative_index_path)
-                print(f"Successfully saved collaborative index to {collaborative_index_path}")
+                print(f"Successfully saved {collaborative_index_type} collaborative index to {collaborative_index_path}")
         
         print("Recommendation system initialized successfully")
     
