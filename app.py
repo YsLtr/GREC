@@ -1,3 +1,4 @@
+from blinker.base import F
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from recommendation_system import GameRecommendationSystem
@@ -7,14 +8,29 @@ import pandas as pd
 import requests
 import time
 
+# 辅助函数：将numpy类型转换为Python原生类型
+def convert_numpy_types(data):
+    if isinstance(data, dict):
+        return {k: convert_numpy_types(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [convert_numpy_types(item) for item in data]
+    elif isinstance(data, np.float32) or isinstance(data, np.float64):
+        return float(data)
+    elif isinstance(data, np.int32) or isinstance(data, np.int64):
+        return int(data)
+    elif isinstance(data, np.bool_):
+        return bool(data)
+    else:
+        return data
+
 # Steam API缓存，用于存储游戏价格数据
 steam_price_cache = {}
 # Steam API缓存，用于存储游戏评分数据
 steam_reviews_cache = {}
-# 缓存过期时间（24小时）
-CACHE_EXPIRY = 24 * 60 * 60
+# 导入配置
+from config import CACHE_EXPIRY, USE_CONTENT_BASED, USE_COLLABORATIVE, GAME_WEIGHT, REVIEW_WEIGHT
 
-# 获取游戏用户评分的函数
+# 初始化数据加载器获取游戏用户评分的函数
 def get_steam_reviews_score(appid):
     """通过Steam API获取游戏的用户评分信息"""
     # 检查缓存中是否有有效数据
@@ -152,7 +168,7 @@ data_dir = os.path.join(os.path.dirname(__file__), 'steam_dataset_2025')
 
 # 初始化推荐系统
 rec_system = GameRecommendationSystem(data_dir)
-rec_system.initialize()
+rec_system.initialize(use_content_based=USE_CONTENT_BASED, use_collaborative=USE_COLLABORATIVE)
 
 @app.route('/api/recommend', methods=['POST'])
 def recommend():
@@ -162,16 +178,36 @@ def recommend():
         games = data.get('games', [])
         page = data.get('page', 1)
         per_page = data.get('per_page', 10)
+        # 使用配置文件中的权重参数
+        game_weight = GAME_WEIGHT  # 内容推荐权重
+        review_weight = REVIEW_WEIGHT  # 协同推荐权重
         
         if not games:
             return jsonify({'error': 'No games provided'}), 400
         
         # 提取appid和权重
-        appids = [game['appid'] for game in games]
-        weights = [game['weight'] for game in games]
+        appids = []
+        weights = []
+        for i, game in enumerate(games):
+            try:
+                appid = game['appid']
+                weight = game['weight']
+                appids.append(appid)
+                weights.append(weight)
+            except KeyError as ke:
+                app.logger.error(f"Error in game {i}: {ke}")
+                return jsonify({'error': f'Invalid game data at index {i}: {ke}'}), 400
         
         # 获取全部推荐结果
-        total_recommendations = rec_system.get_recommendations_by_game_list(appids, k=100, weights=weights)
+        total_recommendations = rec_system.get_hybrid_recommendations(appids, k=100, weights=weights, 
+                                                                      use_content_based=USE_CONTENT_BASED, 
+                                                                      use_collaborative=USE_COLLABORATIVE,
+                                                                      game_weight=game_weight,
+                                                                      review_weight=review_weight)
+        
+        # 检查是否返回了错误信息
+        if isinstance(total_recommendations, str):
+            return jsonify({'error': total_recommendations}), 400
         
         # 计算分页
         start = (page - 1) * per_page
@@ -180,37 +216,46 @@ def recommend():
         
         # 转换为前端需要的格式，先返回基本信息
         results = []
-        for rec in paginated_recommendations:
-            # 处理发行日期
-            release_date = rec['release_date']
-            if isinstance(release_date, float) and np.isnan(release_date):
-                release_date = None
-            elif release_date is not None:
-                release_date = str(release_date)
-            
-            # 处理short_description
-            short_description = rec['short_description']
-            if isinstance(short_description, float) and np.isnan(short_description):
-                short_description = ""
-            
-            # 返回基本信息，Steam API数据后续异步获取
-            results.append({
-                'appid': rec['appid'],
-                'name': rec['name'],
-                'similarity': rec['similarity'],
-                'short_description': short_description,
-                'cover': rec['header_image'],
-                'release_date': release_date,
-                'genres': rec['genres'],
-                # 初始空值，后续通过异步请求获取
-                'user_score_label': None,
-                'user_score_percentage': 0.0,
-                'total_reviews': 0,
-                'positive_reviews': 0,
-                'negative_reviews': 0,
-                'price': '加载中...',
-                'is_free': False
-            })
+        for i, rec in enumerate(paginated_recommendations):
+            try:
+                # 处理发行日期
+                release_date = rec.get('release_date')
+                if isinstance(release_date, float) and np.isnan(release_date):
+                    release_date = None
+                elif release_date is not None:
+                    release_date = str(release_date)
+                
+                # 处理short_description
+                short_description = rec.get('short_description', '')
+                if isinstance(short_description, float) and np.isnan(short_description):
+                    short_description = ""
+                
+                # 返回基本信息，Steam API数据后续异步获取
+                results.append({
+                    'appid': rec.get('appid'),
+                    'name': rec.get('name'),
+                    'similarity': rec.get('similarity'),
+                    'short_description': short_description,
+                    'cover': rec.get('header_image'),
+                    'release_date': release_date,
+                    'genres': rec.get('genres', []),
+                    # 初始空值，后续通过异步请求获取
+                    'user_score_label': None,
+                    'user_score_percentage': 0.0,
+                    'total_reviews': 0,
+                    'positive_reviews': 0,
+                    'negative_reviews': 0,
+                    'price': '加载中...',
+                    'is_free': False
+                })
+            except Exception as e:
+                app.logger.error(f"Error processing recommendation {i}: {e}")
+                import traceback
+                app.logger.error(traceback.format_exc())
+                return jsonify({'error': f'Error processing recommendation {i}: {e}'}), 500
+        
+        # 转换numpy类型为Python原生类型，确保JSON可序列化
+        results = convert_numpy_types(results)
         
         return jsonify({
             'recommendations': results,
@@ -222,6 +267,8 @@ def recommend():
     
     except Exception as e:
         app.logger.error(f"Error in recommend: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game-details', methods=['POST'])

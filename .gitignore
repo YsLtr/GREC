@@ -1,4 +1,5 @@
 data
+test_use/
 __pycache__
 grecv
 venv
@@ -7,4 +8,3 @@ kagglehub
 .trae
 old_files
 steam_dataset_2025
-test_use
