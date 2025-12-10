@@ -1,0 +1,27 @@
+多个游戏：
+{
+	"games": [
+		{
+			"appid": 1227890,
+			"weight": 0.5
+		},
+		{
+			"appid": 2429860,
+			"weight": 0.5
+		}
+	],
+	"page": 1,
+	"per_page": 12
+}
+
+单个游戏：
+{
+	"games": [
+		{
+			"appid": 2429860,
+			"weight": 0.5
+		}
+	],
+	"page": 1,
+	"per_page": 12
+}
