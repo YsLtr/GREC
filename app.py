@@ -452,7 +452,8 @@ def get_games():
         # 转换为前端需要的格式
         games = []
         for _, game in filtered_games.iterrows():
-            cover_url = f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{game['appid']}/header.jpg"
+            # 直接使用数据集提供的header_image字段
+            cover_url = game['header_image'] if pd.notna(game['header_image']) else f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{game['appid']}/header.jpg"
             
             games.append({
                 'appid': game['appid'],
