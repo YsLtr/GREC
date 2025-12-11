@@ -1,4 +1,3 @@
-from blinker.base import F
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from recommendation_system import GameRecommendationSystem
