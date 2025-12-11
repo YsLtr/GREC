@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 import requests
 import time
+import uuid
+from threading import Lock
+from functools import wraps
 
 # 辅助函数：将numpy类型转换为Python原生类型
 def convert_numpy_types(data):
@@ -29,6 +32,106 @@ steam_price_cache = {}
 steam_reviews_cache = {}
 # 导入配置
 from config import CACHE_EXPIRY, USE_CONTENT_BASED, USE_COLLABORATIVE, GAME_WEIGHT, REVIEW_WEIGHT
+
+# 客户端请求状态跟踪
+client_states = {
+    # 格式: device_id: {
+    #         'is_processing': bool,        # 是否有正在执行的请求
+    #         'request_timestamps': list,    # 请求时间戳列表
+    #         'cool_down_until': float,      # 冷却结束时间
+    #         'last_request_time': float     # 上一次请求时间
+    #       }
+}
+# 保护状态字典的锁
+state_lock = Lock()
+
+# 请求状态检查装饰器
+def check_request_status(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # 获取或生成设备标识码
+        device_id = request.cookies.get('device_id')
+        is_new_device = False
+        if not device_id:
+            # 如果客户端没有发送设备ID Cookie，生成一个
+            device_id = f"device_{uuid.uuid4()}"
+            is_new_device = True
+        
+        current_time = time.time()
+        
+        with state_lock:
+            # 初始化设备状态
+            if device_id not in client_states:
+                client_states[device_id] = {
+                    'is_processing': False,
+                    'request_timestamps': [],
+                    'cool_down_until': 0,
+                    'last_request_time': 0
+                }
+            
+            # 清理过期的请求时间戳（5秒时间窗口）
+            client_states[device_id]['request_timestamps'] = [
+                ts for ts in client_states[device_id]['request_timestamps'] 
+                if current_time - ts < 5
+            ]
+
+            # 记录当前请求的时间戳（不论请求是否成功）
+            client_states[device_id]['request_timestamps'].append(current_time)
+            
+            # 检查冷却时间
+            if current_time < client_states[device_id]['cool_down_until']:
+                remaining_time = int(client_states[device_id]['cool_down_until'] - current_time) + 1
+                return jsonify({'error': f'请求过于频繁，请{remaining_time}s后重试'}), 429
+            
+            # 检查请求间隔（1秒内只能请求一次）
+            time_since_last_request = current_time - client_states[device_id]['last_request_time']
+            if time_since_last_request < 1.0:
+                remaining_time = int(1.0 - time_since_last_request) + 1
+                return jsonify({'error': f'请求过于频繁，请{remaining_time}s后重试'}), 429
+            
+            # 检查是否有正在执行的请求
+            if client_states[device_id]['is_processing']:
+                return jsonify({'error': 'Previous request not completed'}), 429
+            
+            # 检查请求频率（5秒内最大10个请求）
+            if len(client_states[device_id]['request_timestamps']) >= 10:
+                # 设置冷却时间为5秒
+                client_states[device_id]['cool_down_until'] = current_time + 5
+                return jsonify({'error': '请求过于频繁，请5s后重试'}), 429
+            
+            
+            # 更新请求状态和上次请求时间（只有通过所有检查才会执行）
+            client_states[device_id]['is_processing'] = True
+            client_states[device_id]['last_request_time'] = current_time
+        
+        try:
+            # 执行原函数
+            response = f(*args, **kwargs)
+            
+            # 如果是新设备，添加设备ID到响应的Cookie中
+            if is_new_device:
+                # 确保响应是Response对象
+                if isinstance(response, tuple):
+                    resp_obj, status = response
+                    # 创建Response对象（如果不是的话）
+                    if not hasattr(resp_obj, 'set_cookie'):
+                        resp_obj = jsonify(resp_obj)
+                    resp_obj.set_cookie('device_id', device_id, max_age=30*24*60*60, path='/')
+                    response = resp_obj, status
+                elif not hasattr(response, 'set_cookie'):
+                    # 如果返回值不是Response对象，转换为Response对象
+                    response = jsonify(response)
+                    response.set_cookie('device_id', device_id, max_age=30*24*60*60, path='/')
+                else:
+                    # 直接设置Cookie
+                    response.set_cookie('device_id', device_id, max_age=30*24*60*60, path='/')
+            
+            return response
+        finally:
+            # 请求完成后，更新状态
+            with state_lock:
+                client_states[device_id]['is_processing'] = False
+    return decorated
 
 # 初始化数据加载器获取游戏用户评分的函数
 def get_steam_reviews_score(appid):
@@ -171,6 +274,7 @@ rec_system = GameRecommendationSystem(data_dir)
 rec_system.initialize(use_content_based=USE_CONTENT_BASED, use_collaborative=USE_COLLABORATIVE)
 
 @app.route('/api/recommend', methods=['POST'])
+@check_request_status
 def recommend():
     """处理推荐请求"""
     try:
@@ -388,4 +492,4 @@ def favicon():
 
 if __name__ == '__main__':
     # 关闭调试模式的自动重载功能，避免频繁重启
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
