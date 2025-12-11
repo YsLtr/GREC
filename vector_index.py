@@ -11,28 +11,29 @@ class VectorIndex:
     
     def build_index(self, vectors, index_type='flat'):
         """构建向量索引，支持flat和hnsw两种索引类型"""
-        self.vectors = vectors
+        # 归一化向量，确保内积等价于余弦相似度
+        norm = np.linalg.norm(vectors, axis=1, keepdims=True)
+        self.vectors = vectors / norm
         self.index_type = index_type
         
         if index_type == 'hnsw':
-            # 构建HNSW索引
-            # 使用IP（内积）距离，因为我们的向量已经归一化，内积等价于余弦相似度
-            self.index = faiss.IndexHNSWFlat(self.dimension, 16)  # M=16是HNSW的连接数
+            # 构建HNSW索引，直接使用内积距离
+            self.index = faiss.IndexHNSWFlat(self.dimension, 16, faiss.METRIC_INNER_PRODUCT)  # M=16是HNSW的连接数
             self.index.hnsw.efConstruction = 64  # 构建时的ef参数
             self.index.hnsw.efSearch = 32  # 搜索时的ef参数
             self.index.add(self.vectors)
-            print(f"Built {index_type} index with {vectors.shape[0]} vectors")
+            print(f"Built {index_type} index with {self.vectors.shape[0]} vectors")
         elif index_type == 'flat':
             # 构建flat索引
             self.index = faiss.IndexFlatIP(self.dimension)  # IP = Inner Product
             self.index.add(self.vectors)
-            print(f"Built {index_type} index with {vectors.shape[0]} vectors")
+            print(f"Built {index_type} index with {self.vectors.shape[0]} vectors")
         else:
             raise ValueError(f"Unsupported index type: {index_type}")
         return self.index
     
     def search(self, query_vector, k=10):
-        """搜索最相似的k个向量"""
+        """搜索最相似的k个向量，返回余弦相似度"""
         try:
             # 验证查询向量
             if query_vector is None:
@@ -54,14 +55,18 @@ class VectorIndex:
             if self.index is None:
                 raise ValueError("Index not built")
             
+            # 归一化查询向量
+            norm_query = query_vector / np.linalg.norm(query_vector, axis=1, keepdims=True)
+            
             # 使用faiss索引搜索相似向量
-            # 对于IP索引，返回的是内积值，值越大越相似
-            distances, indices = self.index.search(query_vector, k)
+            # 如果使用内积距离，结果直接就是余弦相似度
+            distances, indices = self.index.search(norm_query, k)
             
             # 将结果转换为一维数组
             distances = distances[0]
             indices = indices[0]
             
+            # 对于所有索引类型，返回的都是余弦相似度
             return distances, indices
         except Exception as e:
             raise RuntimeError(f"Error during vector search: {str(e)}") from e
