@@ -5,7 +5,7 @@ CACHE_EXPIRY = 24 * 60 * 60  # 缓存过期时间（24小时）
 
 # 推荐算法配置
 USE_CONTENT_BASED = True  # 是否使用内容推荐
-USE_COLLABORATIVE = False  # 是否使用协同推荐
+USE_COLLABORATIVE = True  # 是否使用协同推荐
 
 # 推荐权重配置
 GAME_WEIGHT = 0.3  # 内容推荐权重
