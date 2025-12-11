@@ -272,6 +272,15 @@ data_dir = os.path.join(os.path.dirname(__file__), 'steam_dataset_2025')
 rec_system = GameRecommendationSystem(data_dir)
 rec_system.initialize(use_content_based=USE_CONTENT_BASED, use_collaborative=USE_COLLABORATIVE)
 
+# 优化搜索：预加载游戏数据并创建小写名称列用于快速搜索
+games_df = rec_system.data_loader.applications_df
+# 创建小写名称列用于快速搜索
+if 'name_lower' not in games_df.columns:
+    # 处理nan值，确保name列都是字符串
+    games_df['name'] = games_df['name'].fillna('')
+    games_df['name_lower'] = games_df['name'].str.lower()
+print(f"Search optimization: Created lowercase name column for {len(games_df)} games")
+
 @app.route('/api/recommend', methods=['POST'])
 @check_request_status
 def recommend():
@@ -432,13 +441,13 @@ def get_games():
                 filtered_games = appid_match
             else:
                 # 如果appid没有匹配到，继续进行名称搜索
-                filtered_games = games_df[games_df['name'].str.lower().str.contains(query, na=False)]
+                filtered_games = games_df[games_df['name_lower'].str.contains(query, na=False)]
         else:
-            # 正常的名称搜索
-            filtered_games = games_df[games_df['name'].str.lower().str.contains(query, na=False)]
+            # 使用预创建的name_lower列进行快速搜索
+            filtered_games = games_df[games_df['name_lower'].str.contains(query, na=False)]
         
-        # 限制返回数量
-        filtered_games = filtered_games.head(limit)
+        # 限制返回数量并按appid排序（确保结果稳定）
+        filtered_games = filtered_games.sort_values('appid').head(limit)
         
         # 转换为前端需要的格式
         games = []
